@@ -1,6 +1,7 @@
 import os
 import time
 from termcolor import colored
+import math
 
 # This is the Canvas class. It defines some height and width, and a
 # matrix of characters to keep track of where the TerminalScribes are moving
@@ -40,6 +41,7 @@ class TerminalScribe:
         self.mark = '*'
         self.framerate = 0.2
         self.pos = [0, 0]
+        self.dir_angle = 90
 
     def draw(self, pos):
         self.move_marks(pos)
@@ -84,7 +86,33 @@ class TerminalScribe:
         # Update position
         self.pos = [x, y]
 
-    # Animation:
+    def forward(self, angle):
+        self.dir_angle = angle
+        v_x = math.sin(math.radians(angle))
+        v_y = math.cos(math.radians(angle))
+        if math.isclose(abs(v_x), abs(v_y)):
+            v_x = math.copysign(v_y, v_x)
+
+        d_x = 0
+        d_y = 0
+
+        if math.fabs(v_x) >= math.fabs(v_y):
+            if v_x > 0:
+                d_x = 1
+            else:
+                d_x = -1
+
+        if math.fabs(v_y) >= math.fabs(v_x):
+            if v_y > 0:
+                d_y = -1
+            else:
+                d_y = 1
+
+        pos = [self.pos[0] + d_x, self.pos[1] + d_y]
+        if not self.canvas.hitsWall(pos):
+            self.draw(pos)
+
+    # Animation (move marks by one):
 
     def up(self):
         pos = [self.pos[0], self.pos[1]-1]
@@ -106,58 +134,50 @@ class TerminalScribe:
         if not self.canvas.hitsWall(pos):
             self.draw(pos)
 
-    def diag_up(self, dir_horizontal='right'):
-        if dir_horizontal == 'right':
-            x = self.pos[0] + 1
-        else:
-            x = self.pos[0] - 1
-
-        pos = [x, self.pos[1] - 1]
-        if not self.canvas.hitsWall(pos):
-            self.draw(pos)
-
-    def diag_down(self, dir_horizontal='right'):
-        y = self.pos[1] + 1
-        if dir_horizontal == 'right':
-            x = self.pos[0] + 1
-        else:
-            x = self.pos[0] - 1
-
-        pos = [x, y]
-        if not self.canvas.hitsWall(pos):
-            self.draw(pos)
-
     # Draw Lines and Shapes:
 
-    def draw_line(self, length=2, direction='right', new=False, end=False):
+    def draw_line(self, length=2, angle=90, new=False, end=False):
         for _ in range(length):
-            if direction == 'up':
-                self.up()
-            elif direction == 'down':
-                self.down()
-            elif direction == 'right':
-                self.right()
-            elif direction == 'left':
-                self.left()
+            self.forward(angle)
 
     def draw_diag_up(self, length=2, direction='right'):
+        if direction == 'right' or direction == 'r':
+            angle = 45
+        elif direction == 'left' or direction == 'l':
+            angle = 315
+        # errors to catch here: direction is none of above
+
         for _ in range(int(length)):
-            self.diag_up(direction)
+            self.forward(angle)
 
     def draw_diag_down(self, length=2, direction='right'):
+        if direction == 'right' or direction == 'r':
+            angle = 135
+        elif direction == 'left' or direction == 'l':
+            angle = 225
+        # errors to catch here: direction is none of above
+
         for _ in range(int(length)):
-            self.diag_down(direction)
+            self.forward(angle)
 
-    # works
     def draw_rectangle(self, width, height):
-        w = width
-        h = height
-        self.draw_line(w, 'right')
-        self.draw_line(h, 'down')
-        self.draw_line(w, 'left')
-        self.draw_line(h, 'up')
+        self.start_new_line()
+        w = int(round(width)) - 1
+        h = int(round(height)) - 1
+        self.draw_line(w, 90)
+        self.draw_line(h, 180)
+        self.draw_line(w, 270)
+        self.draw_line(h, 0)
 
-        # to maybe add... ability to choose which corner to start drawing from? Plus draw direction (clockwise, counter-clockwise)...
+        # To maybe add... ability to choose which corner to start drawing from?
+        # Plus draw direction (clockwise, counter-clockwise)...
+
+    def draw_triangle(self, sides):
+        b = 2*sides
+        self.start_new_line()
+        self.draw_line(sides, 135)
+        self.draw_line(b, 270)
+        self.draw_line(sides, 45)
 
 # to-do, add "shape size" option, which will scale the shape depending on the number entered
 
